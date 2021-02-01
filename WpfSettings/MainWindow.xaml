@@ -1,0 +1,41 @@
+﻿<Window x:Class="WpfSettings.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfSettings"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="200" Width="450" Loaded="MainWindow_OnLoaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button Name="ButtonIsNetworkInstalled" Grid.Column="0" Grid.Row="0" Click="ButtonIsNetworkInstalled_OnClick" Content="IsNetworkInstalled"/>
+        <Label Grid.Row="0" Grid.Column="1" Name="LabelIsNetworkInstalled" Content="" />
+
+        <Button Name="ButtonLocalVersion" Grid.Column="0" Grid.Row="1" Click="ButtonLocalVersion_OnClick"
+                Content="Get LocalVersion"/>
+        <Label Name="LabelLocalVersion" Grid.Column="1" Grid.Row="1" Content=""/>
+
+        <Button Name="ButtonGetServerVersion" Grid.Column="0" Grid.Row="2"
+                Click="ButtonGetServerVersion_OnClick" Content="Get ServerVersion"/>
+        <Label Name="LabelServerVersion" Grid.Column="1" Grid.Row="2" Content=""/>
+
+        <Button Name="ButtonUpdateAvailable" Grid.Column="0" Grid.Row="3"
+                Click="ButtonUpdateAvailable_OnClick" Content="Update Available"/>
+        <Label Name="LabelUpdateAvailable" Grid.Column="1" Grid.Row="3" Content=""/>
+
+        <Button Name="ButtonUpdate" Grid.Column="0" Grid.Row="4"
+                Click="ButtonUpdate_OnClick" Content="Update"/>
+        <Label Name="LabelUpdate" Grid.Column="1" Grid.Row="4" Content=""/>
+    </Grid>
+</Window>
