@@ -74,14 +74,24 @@ namespace WpfSettings
         {
             try
             {
+                // On update don't make application restart! This is important!
+                // Just make shutdown of current app
                 var updateResult = await _ClickOnce.Update();
                 LabelUpdate.Content = updateResult;
-                Application.Current.Shutdown(0);
+                if (updateResult)
+                {
+                    Application.Current.Shutdown(0);
+                }
             }
             catch (Exception exp)
             {
                 Log.Error(exp, exp.Message);
             }
+        }
+
+        private void ButtonDataDir_OnClick(object sender, RoutedEventArgs e)
+        {
+            LabelDataDir.Content = _ClickOnce.DataDir;
         }
     }
 }

@@ -22,20 +22,24 @@
         <Button Name="ButtonIsNetworkInstalled" Grid.Column="0" Grid.Row="0" Click="ButtonIsNetworkInstalled_OnClick" Content="IsNetworkInstalled"/>
         <Label Grid.Row="0" Grid.Column="1" Name="LabelIsNetworkInstalled" Content="" />
 
-        <Button Name="ButtonLocalVersion" Grid.Column="0" Grid.Row="1" Click="ButtonLocalVersion_OnClick"
+        <Button Name="ButtonDataDir" Grid.Column="0" Grid.Row="1" Click="ButtonDataDir_OnClick"
+                Content="DataDir"/>
+        <Label Grid.Row="1" Grid.Column="1" Name="LabelDataDir" Content="" />
+
+        <Button Name="ButtonLocalVersion" Grid.Column="0" Grid.Row="2" Click="ButtonLocalVersion_OnClick"
                 Content="Get LocalVersion"/>
-        <Label Name="LabelLocalVersion" Grid.Column="1" Grid.Row="1" Content=""/>
+        <Label Name="LabelLocalVersion" Grid.Column="1" Grid.Row="2" Content=""/>
 
-        <Button Name="ButtonGetServerVersion" Grid.Column="0" Grid.Row="2"
+        <Button Name="ButtonGetServerVersion" Grid.Column="0" Grid.Row="3"
                 Click="ButtonGetServerVersion_OnClick" Content="Get ServerVersion"/>
-        <Label Name="LabelServerVersion" Grid.Column="1" Grid.Row="2" Content=""/>
+        <Label Name="LabelServerVersion" Grid.Column="1" Grid.Row="3" Content=""/>
 
-        <Button Name="ButtonUpdateAvailable" Grid.Column="0" Grid.Row="3"
+        <Button Name="ButtonUpdateAvailable" Grid.Column="0" Grid.Row="4"
                 Click="ButtonUpdateAvailable_OnClick" Content="Update Available"/>
-        <Label Name="LabelUpdateAvailable" Grid.Column="1" Grid.Row="3" Content=""/>
+        <Label Name="LabelUpdateAvailable" Grid.Column="1" Grid.Row="4" Content=""/>
 
-        <Button Name="ButtonUpdate" Grid.Column="0" Grid.Row="4"
+        <Button Name="ButtonUpdate" Grid.Column="0" Grid.Row="5"
                 Click="ButtonUpdate_OnClick" Content="Update"/>
-        <Label Name="LabelUpdate" Grid.Column="1" Grid.Row="4" Content=""/>
+        <Label Name="LabelUpdate" Grid.Column="1" Grid.Row="5" Content=""/>
     </Grid>
 </Window>

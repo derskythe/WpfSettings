@@ -1,4 +1,17 @@
-﻿using System;
+﻿// ***********************************************************************
+// Assembly         : PureManApplicationDeployment
+// Author           : Skif
+// Created          : 02-04-2021
+//
+// Last Modified By : Skif
+// Last Modified On : 02-04-2021
+// ***********************************************************************
+// <copyright file="PureManClickOnce.cs" company="PureManApplicationDeployment">
+//     Copyright (c) . All rights reserved.
+// </copyright>
+// <summary></summary>
+// ***********************************************************************
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -11,14 +24,51 @@ using Syroot.Windows.IO;
 
 namespace PureManApplicationDeployment
 {
+    /// <summary>
+    /// Class PureManClickOnce.
+    /// </summary>
     public class PureManClickOnce
     {
+        /// <summary>
+        /// The is network deployment
+        /// </summary>
         private readonly bool _IsNetworkDeployment;
+        /// <summary>
+        /// The current application name
+        /// </summary>
         private readonly string _CurrentAppName;
+        /// <summary>
+        /// The current path
+        /// </summary>
         private readonly string _CurrentPath;
+        /// <summary>
+        /// The publish path
+        /// </summary>
         private readonly string _PublishPath;
+        /// <summary>
+        /// The data dir
+        /// </summary>
+        private readonly string _DataDir;
+        /// <summary>
+        /// From
+        /// </summary>
         private InstallFrom _From;
+        /// <summary>
+        /// Gets a value indicating whether this instance is network deployment.
+        /// </summary>
+        /// <value><c>true</c> if this instance is network deployment; otherwise, <c>false</c>.</value>
+        public bool IsNetworkDeployment => _IsNetworkDeployment;
+        /// <summary>
+        /// Gets the data dir.
+        /// </summary>
+        /// <value>The data dir.</value>
+        public string DataDir => _DataDir;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PureManClickOnce"/> class.
+        /// </summary>
+        /// <param name="publishPath">The publish path.</param>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find entry assembly name!</exception>
         public PureManClickOnce(string publishPath)
         {
             _PublishPath = publishPath;
@@ -29,9 +79,59 @@ namespace PureManApplicationDeployment
             {
                 throw new ClickOnceDeploymentException("Can't find entry assembly name!");
             }
+
+            if (_IsNetworkDeployment && !string.IsNullOrEmpty(_CurrentPath))
+            {
+                var programData = Path.Combine(KnownFolders.LocalAppData.Path, @"Apps\2.0\Data\");
+                var currentFolderName = new DirectoryInfo(_CurrentPath).Name;
+                _DataDir = SearchAppDataDir(programData, currentFolderName, 0);
+            }
+            else
+            {
+                _DataDir = string.Empty;
+            }
             SetInstallFrom();
         }
 
+        /// <summary>
+        /// Searches the application data dir.
+        /// </summary>
+        /// <param name="programData">The program data.</param>
+        /// <param name="currentFolderName">Name of the current folder.</param>
+        /// <param name="i">The i.</param>
+        /// <returns>System.String.</returns>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find data dir for {currentFolderName} in path: {programData}</exception>
+        private string SearchAppDataDir(string programData, string currentFolderName, int i)
+        {
+            i++;
+            if (i > 100)
+            {
+                throw new ClickOnceDeploymentException($"Can't find data dir for {currentFolderName} in path: {programData}");
+            }
+            var subdirectoryEntries = Directory.GetDirectories(programData);
+            var result = string.Empty;
+            foreach (var dir in subdirectoryEntries)
+            {
+                if (dir.Contains(currentFolderName))
+                {
+                    result = Path.Combine(dir, "Data");
+                    break;
+                }
+
+                result = SearchAppDataDir(Path.Combine(programData, dir), currentFolderName, i);
+                if (!string.IsNullOrEmpty(result))
+                {
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+
+        /// <summary>
+        /// Sets the install from.
+        /// </summary>
         private void SetInstallFrom()
         {
             if (_IsNetworkDeployment && !string.IsNullOrEmpty(_PublishPath))
@@ -44,8 +144,15 @@ namespace PureManApplicationDeployment
             }
         }
 
-        public bool IsNetworkDeployment => _IsNetworkDeployment;
-
+        /// <summary>
+        /// Currents the version.
+        /// </summary>
+        /// <returns>Task&lt;Version&gt;.</returns>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Not deployed by network!</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Application name is empty!</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find manifest file at path {path}</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Invalid manifest document for {path}</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Version info is empty!</exception>
         public async Task<Version> CurrentVersion()
         {
             if (!IsNetworkDeployment)
@@ -82,6 +189,11 @@ namespace PureManApplicationDeployment
             return new Version(version);
         }
 
+        /// <summary>
+        /// Servers the version.
+        /// </summary>
+        /// <returns>Task&lt;Version&gt;.</returns>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
         public async Task<Version> ServerVersion()
         {
             if (_From == InstallFrom.Web)
@@ -106,6 +218,13 @@ namespace PureManApplicationDeployment
             throw new ClickOnceDeploymentException("No network install was set");
         }
 
+        /// <summary>
+        /// Reads the server manifest.
+        /// </summary>
+        /// <param name="stream">The stream.</param>
+        /// <returns>Task&lt;Version&gt;.</returns>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Invalid manifest document for {_CurrentAppName}.application</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Version info is empty!</exception>
         private async Task<Version> ReadServerManifest(Stream stream)
         {
             var xmlDoc = await XDocument.LoadAsync(stream, LoadOptions.None, CancellationToken.None);
@@ -126,6 +245,10 @@ namespace PureManApplicationDeployment
             return new Version(version);
         }
 
+        /// <summary>
+        /// Updates the available.
+        /// </summary>
+        /// <returns>Task&lt;System.Boolean&gt;.</returns>
         public async Task<bool> UpdateAvailable()
         {
             var currentVersion = await CurrentVersion();
@@ -134,6 +257,12 @@ namespace PureManApplicationDeployment
             return currentVersion < serverVersion;
         }
 
+        /// <summary>
+        /// Updates this instance.
+        /// </summary>
+        /// <returns>Task&lt;System.Boolean&gt;.</returns>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't start update process</exception>
         public async Task<bool> Update()
         {
             var currentVersion = await CurrentVersion();
@@ -186,6 +315,11 @@ namespace PureManApplicationDeployment
             return true;
         }
 
+        /// <summary>
+        /// Opens the URL.
+        /// </summary>
+        /// <param name="url">The URL.</param>
+        /// <returns>Process.</returns>
         private static Process OpenUrl(string url)
         {
             try
@@ -217,6 +351,10 @@ namespace PureManApplicationDeployment
             }
         }
 
+        /// <summary>
+        /// Checks the is network deployment.
+        /// </summary>
+        /// <returns><c>true</c> if XXXX, <c>false</c> otherwise.</returns>
         private bool CheckIsNetworkDeployment()
         {
             if (!string.IsNullOrEmpty(_CurrentPath) && _CurrentPath.Contains("AppData\\Local\\Apps"))
