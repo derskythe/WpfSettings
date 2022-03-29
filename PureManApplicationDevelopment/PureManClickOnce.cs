@@ -305,7 +305,17 @@ namespace PureManApplicationDeployment
                 throw new ClickOnceDeploymentException("Can't start update process");
             }
 
+#if NET5_0_OR_GREATER
             await proc.WaitForExitAsync();
+#elif NETCOREAPP3_1
+            var tcs = new TaskCompletionSource<object>();
+            proc.Exited += (_, __) =>
+            {
+                proc.WaitForExit(); //ensure process has exited!
+                tcs.TrySetResult(true);
+            };
+            if (!proc.HasExited) await tcs.Task;
+#endif
 
             if (!string.IsNullOrEmpty(setupPath))
             {
