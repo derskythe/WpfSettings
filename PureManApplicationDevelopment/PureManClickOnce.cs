@@ -3,8 +3,8 @@
 // Author           : Skif
 // Created          : 02-04-2021
 //
-// Last Modified By : Skif
-// Last Modified On : 02-04-2021
+// Last Modified By : RFBomb
+// Last Modified On : 03-03-2022
 // ***********************************************************************
 // <copyright file="PureManClickOnce.cs" company="PureManApplicationDeployment">
 //     Copyright (c) . All rights reserved.
@@ -24,45 +24,13 @@ using Syroot.Windows.IO;
 
 namespace PureManApplicationDeployment
 {
+
     /// <summary>
     /// Class PureManClickOnce.
     /// </summary>
     public class PureManClickOnce
     {
-        /// <summary>
-        /// The is network deployment
-        /// </summary>
-        private readonly bool _IsNetworkDeployment;
-        /// <summary>
-        /// The current application name
-        /// </summary>
-        private readonly string _CurrentAppName;
-        /// <summary>
-        /// The current path
-        /// </summary>
-        private readonly string _CurrentPath;
-        /// <summary>
-        /// The publish path
-        /// </summary>
-        private readonly string _PublishPath;
-        /// <summary>
-        /// The data dir
-        /// </summary>
-        private readonly string _DataDir;
-        /// <summary>
-        /// From
-        /// </summary>
-        private InstallFrom _From;
-        /// <summary>
-        /// Gets a value indicating whether this instance is network deployment.
-        /// </summary>
-        /// <value><c>true</c> if this instance is network deployment; otherwise, <c>false</c>.</value>
-        public bool IsNetworkDeployment => _IsNetworkDeployment;
-        /// <summary>
-        /// Gets the data dir.
-        /// </summary>
-        /// <value>The data dir.</value>
-        public string DataDir => _DataDir;
+        #region < Constructor >
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PureManClickOnce"/> class.
@@ -92,6 +60,54 @@ namespace PureManApplicationDeployment
             }
             SetInstallFrom();
         }
+
+        #endregion
+
+        #region < Private Fields  >
+
+        /// <summary>
+        /// The is network deployment
+        /// </summary>
+        private readonly bool _IsNetworkDeployment;
+        /// <summary>
+        /// The current application name
+        /// </summary>
+        private readonly string _CurrentAppName;
+        /// <summary>
+        /// The current path
+        /// </summary>
+        private readonly string _CurrentPath;
+        /// <summary>
+        /// The publish path
+        /// </summary>
+        private readonly string _PublishPath;
+        /// <summary>
+        /// The data dir
+        /// </summary>
+        private readonly string _DataDir;
+        /// <summary>
+        /// From
+        /// </summary>
+        private InstallFrom _From;
+
+        #endregion
+
+        #region < Public Properties >
+
+        /// <summary>
+        /// Gets a value indicating whether this instance is network deployment.
+        /// </summary>
+        /// <value><c>true</c> if this instance is network deployment; otherwise, <c>false</c>.</value>
+        public bool IsNetworkDeployment => _IsNetworkDeployment;
+        /// <summary>
+        /// Gets the data dir.
+        /// </summary>
+        /// <value>The data dir.</value>
+        public string DataDir => _DataDir;
+
+        #endregion
+
+        #region < Private Constructor Methods >
 
         /// <summary>
         /// Searches the application data dir.
@@ -143,6 +159,10 @@ namespace PureManApplicationDeployment
                 _From = InstallFrom.NoNetwork;
             }
         }
+
+        #endregion
+
+        #region < Read Version Information >
 
         /// <summary>
         /// Currents the version.
@@ -244,6 +264,10 @@ namespace PureManApplicationDeployment
 
             return new Version(version);
         }
+
+        #endregion
+
+        #region < Check For & Update >
 
         /// <summary>
         /// Updates the available.
@@ -374,5 +398,8 @@ namespace PureManApplicationDeployment
 
             return false;
         }
+
+#endregion
+
     }
 }
