@@ -214,7 +214,8 @@ namespace PureManApplicationDeployment
         /// </summary>
         /// <returns>Task&lt;Version&gt;.</returns>
         /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
-        public async Task<Version> ServerVersion()
+        /// <inheritdoc cref="ReadServerManifest(Stream, CancellationToken?)"/>
+        public async Task<Version> ServerVersion(CancellationToken? token = null)
         {
             if (_From == InstallFrom.Web)
             {
@@ -222,7 +223,7 @@ namespace PureManApplicationDeployment
                 {
                     using (var stream = await client.GetStreamAsync($"{_CurrentAppName}.application"))
                     {
-                        return await ReadServerManifest(stream);
+                        return await ReadServerManifest(stream, token);
                     }
                 }
             }
@@ -231,7 +232,7 @@ namespace PureManApplicationDeployment
             {
                 using (var stream = File.OpenRead(Path.Combine($"{_PublishPath}", $"{_CurrentAppName}.application")))
                 {
-                    return await ReadServerManifest(stream);
+                    return await ReadServerManifest(stream, token);
                 }
             }
 
@@ -242,12 +243,17 @@ namespace PureManApplicationDeployment
         /// Reads the server manifest.
         /// </summary>
         /// <param name="stream">The stream.</param>
+        /// <param name="token"><see cref="CancellationToken"/> used to cancel the request to read the server manifest.</param>
         /// <returns>Task&lt;Version&gt;.</returns>
         /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Invalid manifest document for {_CurrentAppName}.application</exception>
         /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Version info is empty!</exception>
-        private async Task<Version> ReadServerManifest(Stream stream)
+        /// <inheritdoc cref="CancellationToken.ThrowIfCancellationRequested"/>
+        /// <inheritdoc cref="Version.Version(string)"/>
+        private async Task<Version> ReadServerManifest(Stream stream, CancellationToken? token)
         {
-            var xmlDoc = await XDocument.LoadAsync(stream, LoadOptions.None, CancellationToken.None);
+            var CToken = token ?? CancellationToken.None;
+            var xmlDoc = await XDocument.LoadAsync(stream, LoadOptions.None, CToken);
+            CToken.ThrowIfCancellationRequested();
             XNamespace nsSys = "urn:schemas-microsoft-com:asm.v1";
             var xmlElement = xmlDoc.Descendants(nsSys + "assemblyIdentity").FirstOrDefault();
 
@@ -270,29 +276,38 @@ namespace PureManApplicationDeployment
         #region < Check For & Update >
 
         /// <summary>
-        /// Updates the available.
+        /// Compares the CurrentVersion and the ServerVersion task results.
         /// </summary>
-        /// <returns>Task&lt;System.Boolean&gt;.</returns>
-        public async Task<bool> UpdateAvailable()
+        /// <returns>
+        /// Task&lt;System.Boolean&gt; <br/>
+        /// <c>TRUE</c> if currentVersion &lt; serverVersion, otherwise <c>FALSE.</c>
+        /// </returns>
+        /// <inheritdoc cref="ServerVersion(CancellationToken?)"/>
+        public async Task<bool> UpdateAvailable(CancellationToken? token = null)
         {
             var currentVersion = await CurrentVersion();
-            var serverVersion = await ServerVersion();
-
+            var serverVersion = await ServerVersion(token);
+            if (token.IsCancellationRequested()) return false;
             return currentVersion < serverVersion;
         }
+
 
         /// <summary>
         /// Updates this instance.
         /// </summary>
-        /// <returns>Task&lt;System.Boolean&gt;.</returns>
+        /// <returns>Task&lt;System.Boolean&gt; whose result will be TRUE if the update completed successfully.</returns>
+        /// <param name="token">optional <see cref="CancellationToken"/> used to cancel the update process. Use at own risk. </param>
+        /// <inheritdoc cref="remarks" path="*"/>
         /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
         /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't start update process</exception>
-        public async Task<bool> Update()
+        /// <inheritdoc cref="ServerVersion(CancellationToken?)"/>
+        public async Task<bool> Update(CancellationToken? token = null)
         {
             var currentVersion = await CurrentVersion();
-            var serverVersion = await ServerVersion();
+            var CToken = token ?? CancellationToken.None;
+            var serverVersion = await ServerVersion(CToken);
 
-            if (currentVersion >= serverVersion)
+            if (currentVersion >= serverVersion | CToken.IsCancellationRequested)
             {
                 // Nothing to update
                 return false;
@@ -307,12 +322,20 @@ namespace PureManApplicationDeployment
                 setupPath = Path.Combine(downLoadFolder.Path, $"setup{serverVersion}.exe");
                 using (var client = new HttpClient())
                 {
-                    var response = await client.GetAsync(uri);
+                    var response = await client.GetAsync(uri, token ?? CancellationToken.None);
+                    token.ThrowIfCancellationRequested();
+                    
                     using (var fs = new FileStream(setupPath, FileMode.CreateNew))
                     {
-                        await response.Content.CopyToAsync(fs);
+#if NET5_0_OR_GREATER
+                        await response.Content.CopyToAsync(fs, CToken);
+#else
+                        // this action is not cancellable -> overload does no exist!                        
+                        var task = response.Content.CopyToAsync(fs);
+#endif                   
                     }
                 }
+                token.ThrowIfCancellationRequested(); // Last chance to prevent the process starting
                 proc = OpenUrl(setupPath);
             }
             else if (_From == InstallFrom.Unc)
@@ -329,17 +352,14 @@ namespace PureManApplicationDeployment
                 throw new ClickOnceDeploymentException("Can't start update process");
             }
 
-#if NET5_0_OR_GREATER
-            await proc.WaitForExitAsync();
-#elif NETCOREAPP3_1
-            var tcs = new TaskCompletionSource<object>();
-            proc.Exited += (_, __) =>
+            await proc.WaitForExitAsync(CToken);
+
+            //Ensure process is cleaned up
+            if (!(proc is null))
             {
-                proc.WaitForExit(); //ensure process has exited!
-                tcs.TrySetResult(true);
-            };
-            if (!proc.HasExited) await tcs.Task;
-#endif
+                if (!proc.HasExited) proc?.Kill();
+                proc?.Dispose();
+            }
 
             if (!string.IsNullOrEmpty(setupPath))
             {
@@ -348,6 +368,16 @@ namespace PureManApplicationDeployment
 
             return true;
         }
+
+#if NETCOREAPP3_1
+        /// <remarks>
+        /// If installing from the web and using .NetCoreApp3.1, the stream download is unable to be cancelled due to no support for CopyToAsync overload with a cancellation token. <br/>
+        /// If cancellation is requested during the download, it will throw prior to the process that triggers the update being started.
+        /// </remarks>
+        private void remarks() { }
+#else
+        private void remarks() { }
+#endif
 
         /// <summary>
         /// Opens the URL.
