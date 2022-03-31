@@ -138,6 +138,14 @@ namespace PureManApplicationDeployment
         public string DataDir => _DataDir;
 
         /// <summary>
+        /// Gets the Web site or file share from which this application updates itself.
+        /// </summary>
+        /// <returns>
+        /// The publishPath passed into the constructor.
+        /// </returns>
+        public string UpdateLocation => _PublishPath;
+
+        /// <summary>
         /// The last time the application checked for an update. 
         /// <br/>The last time <see cref="RefreshServerVersion(CancellationToken?)"/> was called.
         /// </summary>
