@@ -38,8 +38,7 @@ namespace PureManApplicationDeployment
         [DebuggerHidden]
         public static void ThrowIfCancellationRequested(this CancellationToken? token)
         {
-            if (token.HasValue)
-                token.Value.ThrowIfCancellationRequested();
+            token?.ThrowIfCancellationRequested();
         }
 
 #if NETCOREAPP3_1_OR_GREATER
@@ -49,11 +48,11 @@ namespace PureManApplicationDeployment
             var tcs = new TaskCompletionSource<object>();
             proc.Exited += (_, __) =>
             {
-                proc?.WaitForExit(); //ensure process has exited!
+                proc.WaitForExit(); //ensure process has exited!
                 tcs.TrySetResult(true);
             };
             if (proc?.HasExited ?? true) return Task.CompletedTask;
-            return Task.Run(() => Task.WaitAll(new Task[] { tcs.Task }, token));
+            return Task.Run(() => Task.WaitAll(new Task[] { tcs.Task }, token), token);
         }
 #endif
 

@@ -11,6 +11,7 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -24,7 +25,6 @@ using Syroot.Windows.IO;
 
 namespace PureManApplicationDeployment
 {
-
     /// <summary>
     /// Class PureManClickOnce.
     /// </summary>
@@ -59,6 +59,7 @@ namespace PureManApplicationDeployment
             {
                 _DataDir = string.Empty;
             }
+
             SetInstallFrom();
         }
 
@@ -70,30 +71,34 @@ namespace PureManApplicationDeployment
         /// The is network deployment
         /// </summary>
         private bool _IsNetworkDeployment { get; }
+
         /// <summary>
         /// The current application name
         /// </summary>
         private string _CurrentAppName { get; }
+
         /// <summary>
         /// The path to the directory that contains the application
         /// </summary>
         private string _CurrentPath { get; }
+
         /// <summary>
         /// The publish path (where to check for updates)
         /// </summary>
         private string _PublishPath { get; }
+
         /// <summary>
         /// The data dir
         /// </summary>
         private string _DataDir { get; }
+
         /// <summary>
         /// From
         /// </summary>
         private InstallFrom _From;
 
         // This value is set when the class is statically constructed. This is to set a base value for the DateTime, assuming the app checks for updates prior to starting up.
-        private readonly static DateTime FirstAccessTime = DateTime.Now; 
-        private DateTime _TimeOfLastUpdateCheckValue = FirstAccessTime;
+        private static readonly DateTime FirstAccessTime = DateTime.Now;
         private Version _CachedLocalVersion;
         private Version _CachedServerVersion;
 
@@ -114,15 +119,22 @@ namespace PureManApplicationDeployment
         /// If <see cref="IsNetworkDeployment"/> : The last read <see cref="Version"/> read by <see cref="RefreshCurrentVersion"/>
         /// <br/> ELSE: <see cref="AssemblyName.Version"/>
         /// </returns>
-        public Version CurrentVersion { get
+        public Version CurrentVersion
+        {
+            get
             {
-                if (_CachedLocalVersion is null)
+                if (_CachedLocalVersion is { })
                 {
-                    if (!IsNetworkDeployment) return CurrentAssemblyName.Version;
-                    return RefreshCurrentVersion().Result;
+                    return _CachedLocalVersion;
                 }
-                return _CachedLocalVersion;
-            } 
+
+                if (!IsNetworkDeployment)
+                {
+                    return CurrentAssemblyName.Version;
+                }
+
+                return RefreshCurrentVersion().Result;
+            }
         }
 
         /// <summary>
@@ -130,7 +142,7 @@ namespace PureManApplicationDeployment
         /// </summary>
         /// <value><c>true</c> if this instance is network deployment; otherwise, <c>false</c>.</value>
         public bool IsNetworkDeployment => _IsNetworkDeployment;
-        
+
         /// <summary>
         /// Gets the data directory path
         /// </summary>
@@ -146,10 +158,10 @@ namespace PureManApplicationDeployment
         public string UpdateLocation => _PublishPath;
 
         /// <summary>
-        /// The last time the application checked for an update. 
+        /// The last time the application checked for an update.
         /// <br/>The last time <see cref="RefreshServerVersion(CancellationToken?)"/> was called.
         /// </summary>
-        public DateTime TimeOfLastUpdateCheckValue => _TimeOfLastUpdateCheckValue;
+        public DateTime TimeOfLastUpdateCheckValue { get; private set; } = FirstAccessTime;
 
         /// <summary>
         /// Number of milliseconds to wait for the ServerVersion to successfully read prior to cancelling the request.
@@ -167,19 +179,33 @@ namespace PureManApplicationDeployment
         /// If <see cref="ServerVersion(CancellationToken?)"/> was successfull, return the last read <see cref="Version"/> object. <br/>
         /// Otherwise return null.
         /// </returns>
-        public Version CachedServerVersion { get
+        public Version CachedServerVersion
+        {
+            get
             {
-                if (_CachedServerVersion is null)
-                    try { RefreshServerVersion(new CancellationTokenSource(DefaultCancellationTime).Token).Wait(); }
-                    catch { }
+                if (_CachedServerVersion is { })
+                {
+                    return _CachedServerVersion;
+                }
+
+                try
+                {
+                    RefreshServerVersion(new CancellationTokenSource(DefaultCancellationTime).Token).Wait();
+                }
+                catch
+                {
+                    // silent catch
+                }
+
                 return _CachedServerVersion;
-            } 
+            }
         }
 
         /// <summary>
         /// Value indicating if <see cref="RefreshServerVersion(CancellationToken?)"/> had run successfully.
         /// </summary>
-        /// <remarks>If this is false, then <see cref="CachedServerVersion"/> and <see cref="TimeOfLastUpdateCheckValue"/> are set up to default values.</remarks>
+        /// <remarks>If this is false, then <see cref="CachedServerVersion"/> and <see cref="TimeOfLastUpdateCheckValue"/> are
+        /// set up to default values.</remarks>
         public bool ServerVersionCheckedSuccessfully => _CachedServerVersion != null;
 
         /// <summary>
@@ -189,7 +215,8 @@ namespace PureManApplicationDeployment
         /// TRUE if ( <see cref="IsNetworkDeployment"/> == TRUE &amp;&amp; <see cref="CachedServerVersion"/> &gt; <see cref="CurrentVersion"/> ) <br/>
         /// Otherwise : FALSE.
         /// </returns>
-        public bool CachedIsUpdateAvailable => IsNetworkDeployment && ServerVersionCheckedSuccessfully && _CachedServerVersion > CurrentVersion;
+        public bool CachedIsUpdateAvailable =>
+            IsNetworkDeployment && ServerVersionCheckedSuccessfully && _CachedServerVersion > CurrentVersion;
 
         #endregion
 
@@ -202,7 +229,8 @@ namespace PureManApplicationDeployment
         /// <param name="currentFolderName">Name of the current folder.</param>
         /// <param name="i">The i.</param>
         /// <returns>System.String.</returns>
-        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find data dir for {currentFolderName} in path: {programData}</exception>
+        /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find data dir for {currentFolderName}
+        /// in path: {programData}</exception>
         private string SearchAppDataDir(string programData, string currentFolderName, int i)
         {
             i++;
@@ -210,6 +238,7 @@ namespace PureManApplicationDeployment
             {
                 throw new ClickOnceDeploymentException($"Can't find data dir for {currentFolderName} in path: {programData}");
             }
+
             var subdirectoryEntries = Directory.GetDirectories(programData);
             var result = string.Empty;
             foreach (var dir in subdirectoryEntries)
@@ -276,6 +305,7 @@ namespace PureManApplicationDeployment
             {
                 throw new ClickOnceDeploymentException($"Can't find manifest file at path {path}");
             }
+
             var fileContent = await File.ReadAllTextAsync(path);
             var xmlDoc = XDocument.Parse(fileContent, LoadOptions.None);
             XNamespace nsSys = "urn:schemas-microsoft-com:asm.v1";
@@ -291,6 +321,7 @@ namespace PureManApplicationDeployment
             {
                 throw new ClickOnceDeploymentException("Version info is empty!");
             }
+
             _CachedLocalVersion = new Version(version);
             return _CachedLocalVersion;
         }
@@ -305,7 +336,7 @@ namespace PureManApplicationDeployment
         {
             if (_From == InstallFrom.Web)
             {
-                using (var client = new HttpClient {BaseAddress = new Uri(_PublishPath)})
+                using (var client = new HttpClient { BaseAddress = new Uri(_PublishPath) })
                 {
                     using (var stream = await client.GetStreamAsync($"{_CurrentAppName}.application"))
                     {
@@ -337,9 +368,9 @@ namespace PureManApplicationDeployment
         /// <inheritdoc cref="Version.Version(string)"/>
         private async Task<Version> ReadServerManifest(Stream stream, CancellationToken? token)
         {
-            var CToken = (token is null || token == default) ? new CancellationTokenSource(DefaultCancellationTime).Token : (CancellationToken)token;
-            var xmlDoc = await XDocument.LoadAsync(stream, LoadOptions.None, CToken);
-            CToken.ThrowIfCancellationRequested();
+            var cToken = token ?? new CancellationTokenSource(DefaultCancellationTime).Token;
+            var xmlDoc = await XDocument.LoadAsync(stream, LoadOptions.None, cToken);
+            cToken.ThrowIfCancellationRequested();
             XNamespace nsSys = "urn:schemas-microsoft-com:asm.v1";
             var xmlElement = xmlDoc.Descendants(nsSys + "assemblyIdentity").FirstOrDefault();
 
@@ -355,7 +386,7 @@ namespace PureManApplicationDeployment
             }
 
             _CachedServerVersion = new Version(version);
-            _TimeOfLastUpdateCheckValue = DateTime.Now;
+            TimeOfLastUpdateCheckValue = DateTime.Now;
             return _CachedServerVersion;
         }
 
@@ -375,7 +406,10 @@ namespace PureManApplicationDeployment
         {
             var currentVersion = await RefreshCurrentVersion();
             var serverVersion = await RefreshServerVersion(token);
-            if (token.IsCancellationRequested()) return false;
+            if (token.IsCancellationRequested())
+            {
+                return false;
+            }
             return currentVersion < serverVersion;
         }
 
@@ -395,7 +429,7 @@ namespace PureManApplicationDeployment
             var CToken = token ?? CancellationToken.None;
             var serverVersion = await RefreshServerVersion(CToken);
 
-            if (currentVersion >= serverVersion | CToken.IsCancellationRequested)
+            if ((currentVersion >= serverVersion) | CToken.IsCancellationRequested)
             {
                 // Nothing to update
                 return false;
@@ -408,21 +442,21 @@ namespace PureManApplicationDeployment
                 var downLoadFolder = KnownFolders.Downloads;
                 var uri = new Uri($"{_PublishPath}setup.exe");
                 setupPath = Path.Combine(downLoadFolder.Path, $"setup{serverVersion}.exe");
-                using (var client = new HttpClient())
+                // TODO: Must be HttpClientFactory without disposing by @DerSkythe
+                var client = new HttpClient();
+                var response = await client.GetAsync(uri, token ?? CancellationToken.None);
+                token.ThrowIfCancellationRequested();
+
+                using (var fs = new FileStream(setupPath, FileMode.CreateNew))
                 {
-                    var response = await client.GetAsync(uri, token ?? CancellationToken.None);
-                    token.ThrowIfCancellationRequested();
-                    
-                    using (var fs = new FileStream(setupPath, FileMode.CreateNew))
-                    {
 #if NET5_0_OR_GREATER
-                        await response.Content.CopyToAsync(fs, CToken);
+                    await response.Content.CopyToAsync(fs, CToken);
 #else
-                        // this action is not cancellable -> overload does no exist!                        
-                        var task = response.Content.CopyToAsync(fs);
-#endif                   
-                    }
+                    // this action is not cancellable -> overload does no exist!
+                    var task = response.Content.CopyToAsync(fs);
+#endif
                 }
+
                 token.ThrowIfCancellationRequested(); // Last chance to prevent the process starting
                 proc = OpenUrl(setupPath);
             }
@@ -442,12 +476,17 @@ namespace PureManApplicationDeployment
 
             await proc.WaitForExitAsync(CToken);
 
-            //Ensure process is cleaned up
-            if (!(proc is null))
+            // Ensure process is cleaned up
+            // Proc is not null, nobody set it to null before by @DerSkythe
+            //if (!(proc is null))
+            //{
+            if (!proc.HasExited)
             {
-                if (!proc.HasExited) proc?.Kill();
-                proc?.Dispose();
+                proc.Kill();
             }
+
+            proc.Dispose();
+            //}
 
             if (!string.IsNullOrEmpty(setupPath))
             {
@@ -462,7 +501,9 @@ namespace PureManApplicationDeployment
         /// If installing from the web and using .NetCoreApp3.1, the stream download is unable to be cancelled due to no support for CopyToAsync overload with a cancellation token. <br/>
         /// If cancellation is requested during the download, it will throw prior to the process that triggers the update being started.
         /// </remarks>
-        private void UpdateAsyncRemarks() { }
+        private void UpdateAsyncRemarks()
+        {
+        }
 #else
         private void UpdateAsyncRemarks() { }
 #endif
@@ -517,7 +558,6 @@ namespace PureManApplicationDeployment
             return false;
         }
 
-#endregion
-
+        #endregion
     }
 }
