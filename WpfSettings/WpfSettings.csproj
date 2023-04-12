@@ -28,11 +28,11 @@
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Primitives" version="5.0.0" />
-    <PackageReference Include="Newtonsoft.Json" version="12.0.3" />
-    <PackageReference Include="NLog" version="4.7.7" />
+    <PackageReference Include="Newtonsoft.Json" version="13.0.3" />
+    <PackageReference Include="NLog" version="4.7.15" />
     <PackageReference Include="System.Buffers" version="4.5.1" />
     <PackageReference Include="System.IO" version="4.3.0" />
-    <PackageReference Include="System.Memory" version="4.5.4" />
+    <PackageReference Include="System.Memory" version="4.5.5" />
     <PackageReference Include="System.Numerics.Vectors" version="4.5.0" />
     <PackageReference Include="System.Runtime" version="4.3.1" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" version="5.0.0" />
@@ -40,7 +40,7 @@
     <PackageReference Include="System.Security.Cryptography.Encoding" version="4.3.0" />
     <PackageReference Include="System.Security.Cryptography.Primitives" version="4.3.0" />
     <PackageReference Include="System.Text.Encodings.Web" version="5.0.0" />
-    <PackageReference Include="System.Text.Json" version="5.0.1" />
+    <PackageReference Include="System.Text.Json" version="5.0.2" />
     <PackageReference Include="System.Threading.Tasks.Extensions" version="4.5.4" />
     <PackageReference Include="System.ValueTuple" version="4.5.0" />
   </ItemGroup>

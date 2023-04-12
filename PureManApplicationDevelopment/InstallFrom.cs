@@ -16,7 +16,7 @@ namespace PureManApplicationDeployment
     /// <summary>
     /// Enum InstallFrom
     /// </summary>
-    enum InstallFrom
+    internal enum InstallFrom
     {
         /// <summary>
         /// The no network

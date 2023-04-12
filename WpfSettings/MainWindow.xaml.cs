@@ -9,7 +9,7 @@ namespace WpfSettings
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow
     {
         // ReSharper disable FieldCanBeMadeReadOnly.Local
         // ReSharper disable InconsistentNaming
@@ -34,11 +34,11 @@ namespace WpfSettings
             LabelIsNetworkInstalled.Content = _ClickOnce.IsNetworkDeployment;
         }
 
-        private async void ButtonLocalVersion_OnClick(object sender, RoutedEventArgs e)
+        private void ButtonLocalVersion_OnClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                LabelLocalVersion.Content = await _ClickOnce.CurrentVersion();
+                LabelLocalVersion.Content = _ClickOnce.CurrentVersion;
             }
             catch (Exception exp)
             {
@@ -46,11 +46,11 @@ namespace WpfSettings
             }
         }
 
-        private async void ButtonGetServerVersion_OnClick(object sender, RoutedEventArgs e)
+        private void ButtonGetServerVersion_OnClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                LabelServerVersion.Content = await _ClickOnce.ServerVersion();
+                LabelServerVersion.Content = _ClickOnce.CachedServerVersion;
             }
             catch (Exception exp)
             {
@@ -58,11 +58,11 @@ namespace WpfSettings
             }
         }
 
-        private async void ButtonUpdateAvailable_OnClick(object sender, RoutedEventArgs e)
+        private void ButtonUpdateAvailable_OnClick(object sender, RoutedEventArgs e)
         {
             try
             {
-                LabelUpdateAvailable.Content = await _ClickOnce.UpdateAvailable();
+                LabelUpdateAvailable.Content = _ClickOnce.CachedIsUpdateAvailable;
             }
             catch (Exception exp)
             {
@@ -76,7 +76,7 @@ namespace WpfSettings
             {
                 // On update don't make application restart! This is important!
                 // Just make shutdown of current app
-                var updateResult = await _ClickOnce.Update();
+                var updateResult = await _ClickOnce.UpdateAsync();
                 LabelUpdate.Content = updateResult;
                 if (updateResult)
                 {
