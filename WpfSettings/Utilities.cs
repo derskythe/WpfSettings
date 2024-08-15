@@ -54,7 +54,7 @@ namespace WpfSettings
             try
             {
                 var imagesBytes = Convert.FromBase64String(imageString);
-                image= new BitmapImage();
+                image = new BitmapImage();
                 image.BeginInit();
                 image.StreamSource = new MemoryStream(imagesBytes);
                 image.EndInit();
@@ -89,14 +89,14 @@ namespace WpfSettings
         {
             newDate = newDate.ToUniversalTime();
             var updatedTime = new SystemTime
-                {
-                    Year = (ushort)newDate.Year,
-                    Month = (ushort)newDate.Month,
-                    Day = (ushort)newDate.Day,
-                    Hour = (ushort)newDate.Hour,
-                    Minute = (ushort)newDate.Minute,
-                    Second = (ushort)newDate.Second
-                };
+            {
+                Year = (ushort)newDate.Year,
+                Month = (ushort)newDate.Month,
+                Day = (ushort)newDate.Day,
+                Hour = (ushort)newDate.Hour,
+                Minute = (ushort)newDate.Minute,
+                Second = (ushort)newDate.Second
+            };
 
             //Log.Info(newDate.ToLongTimeString());
 
@@ -152,7 +152,7 @@ namespace WpfSettings
         {
             try
             {
-                return Convert.ToDecimal(amount, CultureInfo.InvariantCulture) ;
+                return Convert.ToDecimal(amount, CultureInfo.InvariantCulture);
             }
             catch (Exception e)
             {

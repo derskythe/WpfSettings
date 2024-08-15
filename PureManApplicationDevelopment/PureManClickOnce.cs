@@ -533,13 +533,13 @@ namespace PureManApplicationDeployment
                 // hack because of this: https://github.com/dotnet/corefx/issues/10361
                 url = url.Replace("&", "^&");
                 return Process.Start(new ProcessStartInfo("cmd", $"/c start \"\"{url}\"\"")
-                    {
-                        CreateNoWindow = true,
-                        WindowStyle = ProcessWindowStyle.Hidden,
-                        RedirectStandardInput = true,
-                        RedirectStandardOutput = false,
-                        UseShellExecute = false,
-                    }
+                {
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = false,
+                    UseShellExecute = false,
+                }
                 );
             }
         }
