@@ -20,7 +20,7 @@ namespace WpfSettings
         // ReSharper restore FieldCanBeMadeReadOnly.Local
 
         //private static TimeZoneInfo _Tz = TimeZoneInfo.FindSystemTimeZoneById("Azerbaijan Standard Time");
-        private static readonly Regex _AlphaNumber = new Regex(@"[^A-Z0-9.$ \;\.\-]");
+        private static readonly Regex _AlphaNumber = new(@"[^A-Z0-9.$ \;\.\-]");
 
         [DllImport("user32.dll")]
         static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
@@ -31,7 +31,7 @@ namespace WpfSettings
         [DllImport("kernel32.dll", EntryPoint = "SetSystemTime", SetLastError = true)]
         public extern static bool Win32SetSystemTime(ref SystemTime sysTime);
 
-        private static readonly CultureInfo _Info = new CultureInfo(0x042C);
+        private static readonly CultureInfo _Info = new(0x042C);
 
         public static string FormatDate(DateTime value)
         {
