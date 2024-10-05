@@ -19,9 +19,12 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using PureManApplicationDeployment.Helpers;
+using PureManApplicationDeployment.Models;
 
 namespace PureManApplicationDeployment;
 
@@ -38,15 +41,15 @@ public class PureManClickOnce : IDisposable
     /// </summary>
     /// <param name="publishPath">The path to publish - where to check for updates </param>
     /// <param name="defaultCancellationTime">Time in seconds to cancel long-running requests</param>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find entry assembly name!</exception>
+    /// <exception cref="ClickOnceDeploymentException">Can't find entry assembly name!</exception>
     public PureManClickOnce(string publishPath, int defaultCancellationTime = 10)
     {
         _DefaultCancellationTime = defaultCancellationTime * 1000;
         _PublishPath = publishPath;
         _CurrentPath = AppDomain.CurrentDomain.SetupInformation.ApplicationBase ?? string.Empty;
         _IsNetworkDeployment = CheckIsNetworkDeployment();
-        CurrentAssemblyName = Assembly.GetEntryAssembly()?.GetName(false) ?? throw new ClickOnceDeploymentException("Can't find entry assembly name!");
-        _CurrentAppName = CurrentAssemblyName.Name                        ?? throw new ClickOnceDeploymentException("Can't find entry assembly name!");
+        CurrentAssemblyName = Assembly.GetEntryAssembly()?.GetName(false) ?? throw new ClickOnceDeploymentException(ClickOnceResult.UnknownError, "Can't find entry assembly name!");
+        _CurrentAppName = CurrentAssemblyName.Name                        ?? throw new ClickOnceDeploymentException(ClickOnceResult.UnknownError, "Can't find entry assembly name!");
 
         if (_IsNetworkDeployment && !string.IsNullOrEmpty(_CurrentPath))
         {
@@ -60,7 +63,7 @@ public class PureManClickOnce : IDisposable
 
             var currentFolderName = new DirectoryInfo(_CurrentPath).Name;
 
-            DataDirectory = SearchAppDataDir
+            DataDir = SearchAppDataDir
                 (
                  programData,
                  currentFolderName,
@@ -69,7 +72,7 @@ public class PureManClickOnce : IDisposable
         }
         else
         {
-            DataDirectory = string.Empty;
+            DataDir = string.Empty;
         }
 
         SetInstallFrom();
@@ -92,13 +95,6 @@ public class PureManClickOnce : IDisposable
     #endregion
 
     #region < Private Fields  >
-
-#if LOCAL_DEBUG || REMOTE_DEBUG
-
-    // ReSharper disable FieldCanBeMadeReadOnly.Local
-    // ReSharper disable InconsistentNaming
-    private static readonly NLog.Logger Log = NLog.LogManager.GetCurrentClassLogger();
-#endif
 
     /// <summary>
     /// An instance of the HttpClient used for making HTTP requests in the PureManClickOnce class.
@@ -134,11 +130,6 @@ public class PureManClickOnce : IDisposable
     /// The publishing path (where to check for updates)
     /// </summary>
     private readonly string _PublishPath;
-
-    /// <summary>
-    /// The data dir
-    /// </summary>
-    private string DataDirectory { get; }
 
     /// <summary>
     /// From
@@ -199,7 +190,6 @@ public class PureManClickOnce : IDisposable
     /// Gets the current version of the deployment
     /// </summary>
     /// <returns>
-    /// If <see cref="IsNetworkDeployment"/> : The last read <see cref="Version"/> read by <see cref="RefreshCurrentVersion"/>
     /// <br/> ELSE: <see cref="AssemblyName.Version"/>
     /// </returns>
     public async Task<Version?> CurrentVersion()
@@ -216,19 +206,25 @@ public class PureManClickOnce : IDisposable
 
         using var cts = new CancellationTokenSource(_DefaultCancellationTime);
 
-        try
+        return await RefreshCurrentVersion(cts.Token);
+    }
+
+    public async Task<(Version? version, ClickOnceResult result)> CurrentVersionExtended()
+    {
+        if (_CachedLocalVersion is not null)
         {
-            return await RefreshCurrentVersion(cts.Token);
-        }
-        catch (Exception exp)
-        {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
-            Console.WriteLine(exp.Message);
+            return (_CachedLocalVersion, ClickOnceResult.Ok);
         }
 
-        return null;
+        if (!IsNetworkDeployment)
+        {
+            return (CurrentAssemblyName.Version, ClickOnceResult.NoNetworkInstall);
+        }
+
+        using var cts = new CancellationTokenSource(_DefaultCancellationTime);
+
+
+        return await RefreshCurrentVersionExtended(cts.Token);
     }
 
     /// <summary>
@@ -241,7 +237,7 @@ public class PureManClickOnce : IDisposable
     /// Gets the data directory path
     /// </summary>
     /// <value>The data directory</value>
-    public string DataDir => DataDirectory;
+    public string DataDir { get; }
 
     /// <summary>
     /// Gets the Web site or file share from which this application updates itself.
@@ -274,7 +270,7 @@ public class PureManClickOnce : IDisposable
     /// If call to <c>ServerVersion</c> was successfully, return the last read <see cref="Version"/> object. <br/>
     /// Otherwise, return null.
     /// </returns>
-    public async Task<Version?> CachedServerVersion()
+    public async Task<Version?> CachedServerVersionAsync()
     {
         if (_CachedServerVersion is not null)
         {
@@ -297,21 +293,21 @@ public class PureManClickOnce : IDisposable
     /// <summary>
     /// Value indicating if <see cref="RefreshServerVersion(CancellationToken)"/> had run successfully.
     /// </summary>
-    /// <remarks>If this is false, then <see cref="CachedServerVersion"/> and <see cref="TimeOfLastUpdateCheckValue"/> are
+    /// <remarks>If this is false, then <see cref="CachedServerVersionAsync"/> and <see cref="TimeOfLastUpdateCheckValue"/> are
     /// set up to default values.</remarks>
 
     // ReSharper disable once MemberCanBePrivate.Global
     public bool ServerVersionCheckedSuccessfully => _CachedServerVersion != null;
 
     /// <summary>
-    /// Compare the <see cref="CachedServerVersion"/> and the <see cref="CurrentVersion"/>
+    /// Compare the <see cref="CachedServerVersionAsync"/> and the <see cref="CurrentVersion"/>
     /// </summary>
     /// <returns>
-    /// TRUE if ( <see cref="IsNetworkDeployment"/> == TRUE &amp;&amp; <see cref="CachedServerVersion"/> &gt;
+    /// TRUE if ( <see cref="IsNetworkDeployment"/> == TRUE &amp;&amp; <see cref="CachedServerVersionAsync"/> &gt;
     /// <see cref="CurrentVersion"/> ) <br/>
     /// Otherwise : FALSE.
     /// </returns>
-    public async Task<bool> CachedIsUpdateAvailable()
+    public async Task<bool> CachedIsUpdateAvailableAsync()
     {
         return IsNetworkDeployment && ServerVersionCheckedSuccessfully && _CachedServerVersion > await CurrentVersion();
     }
@@ -327,7 +323,7 @@ public class PureManClickOnce : IDisposable
     /// <param name="currentFolderName">Name of the current folder.</param>
     /// <param name="i">The i.</param>
     /// <returns>System.String.</returns>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find data dir for {currentFolderName}
+    /// <exception cref="ClickOnceDeploymentException">Can't find data dir for {currentFolderName}
     /// in path: {programData}</exception>
     private static string SearchAppDataDir
     (
@@ -340,7 +336,7 @@ public class PureManClickOnce : IDisposable
 
         if (i > MAX_INNER_DIRS)
         {
-            throw new ClickOnceDeploymentException($"Can't find data dir for {currentFolderName} in path: {programData}");
+            throw new ClickOnceDeploymentException(ClickOnceResult.CannotFindDirectory, $"Can't find data dir for {currentFolderName} in path: {programData}");
         }
 
         var subdirectoryEntries = Directory.GetDirectories(programData);
@@ -395,109 +391,143 @@ public class PureManClickOnce : IDisposable
     /// </summary>
     /// <param name="cancellationToken"></param>
     /// <returns>Task&lt;Version&gt;.</returns>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Not deployed by network!</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Application name is empty!</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't find manifest file at path {path}</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Invalid manifest document for {path}</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Version info is empty!</exception>
+    /// <exception cref="ClickOnceDeploymentException">Not deployed by network!</exception>
+    /// <exception cref="ClickOnceDeploymentException">Application name is empty!</exception>
+    /// <exception cref="ClickOnceDeploymentException">Can't find manifest file at path {path}</exception>
+    /// <exception cref="ClickOnceDeploymentException">Invalid manifest document for {path}</exception>
+    /// <exception cref="ClickOnceDeploymentException">Version info is empty!</exception>
 
     // ReSharper disable once MemberCanBePrivate.Global
-    public async Task<Version> RefreshCurrentVersion(CancellationToken cancellationToken = default(CancellationToken))
+    public async Task<Version?> RefreshCurrentVersion(CancellationToken cancellationToken = default(CancellationToken))
+    {
+        var (version, result) = await RefreshCurrentVersionExtended(cancellationToken);
+
+        ThrowClickOnceDeploymentException(result);
+
+        return version;
+    }
+
+    private void ThrowClickOnceDeploymentException(ClickOnceResult result)
+    {
+        switch (result)
+        {
+            case ClickOnceResult.NoNetworkInstall:
+                throw new ClickOnceDeploymentException(result, "Not deployed by network!");
+
+            case ClickOnceResult.ApplicationNameIsEmpty:
+                throw new ClickOnceDeploymentException(result, "Application name is empty!");
+
+            case ClickOnceResult.ManifestNotFound:
+                throw new ClickOnceDeploymentException(result, $"Can't find manifest file at path {_ManifestPath}");
+
+            case ClickOnceResult.CannotProcessManifest:
+                throw new ClickOnceDeploymentException(result, $"Invalid manifest document for {_ManifestPath}");
+
+            case ClickOnceResult.VersionIsEmpty:
+                throw new ClickOnceDeploymentException(result, "Version info is empty!");
+
+            case ClickOnceResult.TimeoutOccured:
+                throw new ClickOnceDeploymentException(result, "Timeout occured!");
+
+            case ClickOnceResult.NoUpdate:
+                throw new ClickOnceDeploymentException(result, "No update available!");
+
+            case ClickOnceResult.VersionCheckError:
+                throw new ClickOnceDeploymentException(result, "Error during version check!");
+
+            case ClickOnceResult.ErrorProcessNotStarted:
+                throw new ClickOnceDeploymentException(result, "Can't start update process!");
+
+            case ClickOnceResult.RunningTimeoutError:
+                throw new ClickOnceDeploymentException(result, "Running timeout error!");
+
+            case ClickOnceResult.UnknownError:
+                throw new ClickOnceDeploymentException(result, "Unknown error!");
+        }
+    }
+
+    public async Task<(Version? version, ClickOnceResult result)> RefreshCurrentVersionExtended(CancellationToken cancellationToken)
     {
         if (!IsNetworkDeployment)
         {
-            throw new ClickOnceDeploymentException("Not deployed by network!");
+            return (null, ClickOnceResult.NoNetworkInstall);
         }
 
         if (string.IsNullOrEmpty(_CurrentAppName))
         {
-            throw new ClickOnceDeploymentException("Application name is empty!");
+            return (null, ClickOnceResult.ApplicationNameIsEmpty);
         }
 
         if (!File.Exists(_ManifestPath))
         {
-            throw new ClickOnceDeploymentException($"Can't find manifest file at path {_ManifestPath}");
+            return (null, ClickOnceResult.ManifestNotFound);
         }
 
-        string fileContent;
-        XElement? xmlElement = null;
+        XElement? xmlElement;
 
         try
         {
-            fileContent = await File.ReadAllTextAsync(_ManifestPath, cancellationToken);
+            var fileContent = await File.ReadAllTextAsync(_ManifestPath, cancellationToken);
             var xmlDoc = XDocument.Parse(fileContent, LoadOptions.None);
             XNamespace nsSys = URN_SCHEMAS_MICROSOFT_COM_ASM_V1;
 
             xmlElement = xmlDoc.Descendants(nsSys + "assemblyIdentity").FirstOrDefault();
         }
-        catch (Exception exp)
+        catch (Exception)
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
-            throw;
+            return (null, ClickOnceResult.CannotProcessManifest);
         }
 
         if (xmlElement == null)
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error($"Invalid manifest document for {_ManifestPath}");
-#endif
-            throw new ClickOnceDeploymentException($"Invalid manifest document for {_ManifestPath}");
+            return (null, ClickOnceResult.CannotProcessManifest);
         }
 
         var version = xmlElement.Attribute("version")?.Value;
 
         if (string.IsNullOrEmpty(version))
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error($"Version info is empty for {_ManifestPath}");
-#endif
-            throw new ClickOnceDeploymentException("Version info is empty!");
+            return (null, ClickOnceResult.VersionIsEmpty);
         }
 
         _CachedLocalVersion = new Version(version);
 
-        return _CachedLocalVersion;
+        return (_CachedLocalVersion, ClickOnceResult.Ok);
     }
 
     /// <summary>
     /// Servers the version.
     /// </summary>
     /// <returns>Task&lt;Version&gt;.</returns>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
-    /// <inheritdoc cref="ReadServerManifest(Stream, CancellationToken)"/>
+    /// <exception cref="ClickOnceDeploymentException">No network install was set</exception>
 
     // ReSharper disable once MemberCanBePrivate.Global
-    public async Task<Version> RefreshServerVersion(CancellationToken cancellationToken = default(CancellationToken))
+    public async Task<Version?> RefreshServerVersion(CancellationToken cancellationToken = default(CancellationToken))
     {
-        try
+        var (version, result) = await RefreshServerVersionExtended(cancellationToken);
+        ThrowClickOnceDeploymentException(result);
+
+        return version;
+    }
+
+    public async Task<(Version? version, ClickOnceResult result)> RefreshServerVersionExtended(CancellationToken cancellationToken = default(CancellationToken))
+    {
+        if (_From == InstallFrom.Web)
         {
-            if (_From == InstallFrom.Web)
-            {
-                _HttpClient.BaseAddress = new Uri(_PublishPath);
-                await using var stream = await _HttpClient.GetStreamAsync(_ApplicationFileName, cancellationToken);
+            _HttpClient.BaseAddress = new Uri(_PublishPath);
+            await using var stream = await _HttpClient.GetStreamAsync(_ApplicationFileName, cancellationToken);
 
-                return await ReadServerManifest(stream, cancellationToken);
-            }
-
-            if (_From != InstallFrom.Unc)
-            {
-                throw new ClickOnceDeploymentException("No network install was set");
-            }
-
-            await using (var stream = File.OpenRead(_ApplicationFileNamePath))
-            {
-                return await ReadServerManifest(stream, cancellationToken);
-            }
+            return await ReadServerManifest(stream, cancellationToken);
         }
-        catch (Exception exp)
-        {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
 
-            throw;
+        if (_From != InstallFrom.Unc)
+        {
+            return (null, ClickOnceResult.NoNetworkInstall);
+        }
+
+        await using (var stream = File.OpenRead(_ApplicationFileNamePath))
+        {
+            return await ReadServerManifest(stream, cancellationToken);
         }
     }
 
@@ -507,11 +537,11 @@ public class PureManClickOnce : IDisposable
     /// <param name="stream">The stream.</param>
     /// <param name="cancellationToken"><see cref="CancellationToken"/> used to cancel the request to read the server manifest.</param>
     /// <returns>Task&lt;Version&gt;.</returns>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Invalid manifest document for {_CurrentAppName}.application</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Version info is empty!</exception>
+    /// <exception cref="ClickOnceDeploymentException">Invalid manifest document for {_CurrentAppName}.application</exception>
+    /// <exception cref="ClickOnceDeploymentException">Version info is empty!</exception>
     /// <inheritdoc cref="CancellationToken.ThrowIfCancellationRequested"/>
     /// <inheritdoc cref="Version"/>
-    private async Task<Version> ReadServerManifest(Stream stream, CancellationToken cancellationToken = default(CancellationToken))
+    private async Task<(Version? version, ClickOnceResult result)> ReadServerManifest(Stream stream, CancellationToken cancellationToken = default(CancellationToken))
     {
         XElement? xmlElement;
 
@@ -529,32 +559,28 @@ public class PureManClickOnce : IDisposable
 
             xmlElement = xmlDoc.Descendants(nsSys + "assemblyIdentity").FirstOrDefault();
         }
-        catch (Exception exp)
+        catch (Exception)
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
-
-            throw;
+            return (null, ClickOnceResult.UnknownError);
         }
 
 
         if (xmlElement == null)
         {
-            throw new ClickOnceDeploymentException($"Invalid manifest document for {_ApplicationFileName}");
+            return (null, ClickOnceResult.ManifestNotFound);
         }
 
         var version = xmlElement.Attribute("version")?.Value;
 
         if (string.IsNullOrEmpty(version))
         {
-            throw new ClickOnceDeploymentException("Version info is empty!");
+            return (null, ClickOnceResult.VersionIsEmpty);
         }
 
         _CachedServerVersion = new Version(version);
         TimeOfLastUpdateCheckValue = DateTime.Now;
 
-        return _CachedServerVersion;
+        return (_CachedServerVersion, ClickOnceResult.Ok);
     }
 
     #endregion
@@ -571,10 +597,15 @@ public class PureManClickOnce : IDisposable
     /// <inheritdoc cref="RefreshServerVersion(CancellationToken)"/>
     public async Task<bool> CheckUpdateAvailableAsync(CancellationToken cancellationToken = default(CancellationToken))
     {
-        var currentVersion = await RefreshCurrentVersion(cancellationToken);
-        var serverVersion = await RefreshServerVersion(cancellationToken);
+        var currentVersion = await RefreshCurrentVersionExtended(cancellationToken);
+        var serverVersion = await RefreshServerVersionExtended(cancellationToken);
 
-        return currentVersion < serverVersion;
+        if (currentVersion.result != ClickOnceResult.Ok || serverVersion.result != ClickOnceResult.Ok)
+        {
+            return false;
+        }
+
+        return currentVersion.version < serverVersion.version;
     }
 
     /// <summary>
@@ -582,30 +613,26 @@ public class PureManClickOnce : IDisposable
     /// </summary>
     /// <returns><see cref="Task"/>&lt;<see cref="bool"/>&gt; whose result will be TRUE if the update completed successfully.</returns>
     /// <param name="cancellationToken">optional <see cref="CancellationToken"/> used to cancel the update process. Use at own risk. </param>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">No network install was set</exception>
-    /// <exception cref="PureManApplicationDeployment.ClickOnceDeploymentException">Can't start update process</exception>
+    /// <exception cref="ClickOnceDeploymentException">No network install was set</exception>
+    /// <exception cref="ClickOnceDeploymentException">Can't start update process</exception>
     /// <inheritdoc cref="RefreshServerVersion(CancellationToken)"/>
-    public async Task<bool> UpdateAsync(CancellationToken cancellationToken = default(CancellationToken))
+    [SupportedOSPlatform("windows")]
+    public async Task<ClickOnceResult> UpdateAsync(CancellationToken cancellationToken = default(CancellationToken))
     {
         Version? serverVersion;
 
         try
         {
-            var currentVersion = await RefreshCurrentVersion(cancellationToken);
-            serverVersion = await RefreshServerVersion(cancellationToken);
-
-            if ((currentVersion >= serverVersion) | cancellationToken.IsCancellationRequested)
+            if (!await CheckUpdateAvailableAsync(cancellationToken))
             {
-                // Nothing to update
-                return false;
+                return ClickOnceResult.NoUpdate;
             }
+
+            serverVersion = _CachedServerVersion;
         }
-        catch (Exception exp)
+        catch (Exception)
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
-            throw;
+            return ClickOnceResult.VersionCheckError;
         }
 
         Process? proc = null;
@@ -617,36 +644,43 @@ public class PureManClickOnce : IDisposable
             {
                 var uri = _PublishPath[..^1] == "/" ? new Uri($"{_PublishPath}setup.exe") : new Uri($"{_PublishPath}/setup.exe");
                 setupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), $"setup{serverVersion}.exe");
-#if LOCAL_DEBUG || REMOTE_DEBUG
-                Log.Info($"Setup path: {setupPath}");
-#endif
-
                 var response = await _HttpClient.GetAsync(uri, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return ClickOnceResult.TimeoutOccured;
+                }
+
+                //cancellationToken.ThrowIfCancellationRequested();
 
                 await using (var fs = new FileStream(setupPath, FileMode.CreateNew))
                 {
                     await response.Content.CopyToAsync(fs, cancellationToken);
                 }
 
-                cancellationToken.ThrowIfCancellationRequested(); // Last chance to prevent the process starting
+                // Last chance to prevent the process starting
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return ClickOnceResult.TimeoutOccured;
+                }
+
                 proc = OpenUrl(setupPath);
             }
             else if (_From == InstallFrom.Unc)
             {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-                Log.Info($"UNC path: {_ApplicationFileNamePath}");
-#endif
                 proc = OpenUrl(_ApplicationFileNamePath);
             }
             else
             {
-                throw new ClickOnceDeploymentException("No network install was set");
+                // throw new ClickOnceDeploymentException("No network install was set");
+                return ClickOnceResult.NoNetworkInstall;
             }
 
             if (proc == null)
             {
-                throw new ClickOnceDeploymentException("Can't start update process");
+                return ClickOnceResult.ErrorProcessNotStarted;
+
+                //throw new ClickOnceDeploymentException("Can't start update process");
             }
 
             await proc.WaitForExitAsync(cancellationToken);
@@ -656,13 +690,13 @@ public class PureManClickOnce : IDisposable
             if (!proc.HasExited)
             {
                 proc.Kill();
+
+                return ClickOnceResult.RunningTimeoutError;
             }
         }
-        catch (Exception exp)
+        catch (Exception)
         {
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Error(exp, exp.Message);
-#endif
+            return ClickOnceResult.UnknownError;
         }
         finally
         {
@@ -676,7 +710,7 @@ public class PureManClickOnce : IDisposable
             File.Delete(setupPath);
         }
 
-        return true;
+        return ClickOnceResult.Ok;
     }
 
     /// <summary>
@@ -684,6 +718,7 @@ public class PureManClickOnce : IDisposable
     /// </summary>
     /// <param name="url">The URL.</param>
     /// <returns>Process.</returns>
+    [SupportedOSPlatform("windows")]
     private static Process? OpenUrl(string url)
     {
         try
@@ -694,27 +729,36 @@ public class PureManClickOnce : IDisposable
                 WindowStyle = ProcessWindowStyle.Hidden,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = false,
-                UseShellExecute = false
-            };
+                UseShellExecute = false,
+                ErrorDialog = true,
+                LoadUserProfile = true,
+                WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), };
 
             return Process.Start(info);
         }
-        catch
+        catch (Exception exp)
         {
+            Console.WriteLine(exp.Message);
+
             // hack because of this: https://github.com/dotnet/corefx/issues/10361
             url = url.Replace("&", "^&");
-#if LOCAL_DEBUG || REMOTE_DEBUG
-            Log.Info($"URL: {url}");
-#endif
             return Process.Start
                 (
-                 new ProcessStartInfo("cmd", $"/c start \"\"{url}\"\"")
+                 new ProcessStartInfo("cmd")
                  {
                      CreateNoWindow = true,
+                     ArgumentList =
+                     {
+                         "/c",
+                         "start",
+                         url, },
                      WindowStyle = ProcessWindowStyle.Hidden,
                      RedirectStandardInput = true,
                      RedirectStandardOutput = false,
-                     UseShellExecute = false, }
+                     UseShellExecute = false,
+                     LoadUserProfile = true,
+                     WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                     ErrorDialog = true, }
                 );
         }
     }
@@ -725,11 +769,7 @@ public class PureManClickOnce : IDisposable
     /// <returns><c>true</c> if <c>CurrentPath</c>, <c>false</c> otherwise.</returns>
     private bool CheckIsNetworkDeployment()
     {
-#if LOCAL_DEBUG
-        return !string.IsNullOrEmpty(_CurrentPath);
-#else
         return !string.IsNullOrEmpty(_CurrentPath) && _CurrentPath.Contains(@"AppData\Local\Apps");
-#endif
     }
 
     #endregion

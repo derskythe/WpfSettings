@@ -11,7 +11,7 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
-namespace PureManApplicationDeployment;
+namespace PureManApplicationDeployment.Models;
 
 
 /// <summary>

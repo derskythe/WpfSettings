@@ -17,7 +17,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PureManApplicationDeployment;
+namespace PureManApplicationDeployment.Helpers;
 
 
 internal static class Extensions

@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:WpfSettings"
     Title="Fast check ClickOnce application settings"
     Width="1520"
     Background="LightSteelBlue"
@@ -15,7 +16,8 @@
     d:Height="450"
     d:Width="1520"
     Loaded="MainWindow_OnLoaded"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    DataContext="{Binding RelativeSource={RelativeSource Self}}">
     <Window.Resources>
         <!--  Button style  -->
         <Style x:Key="ButtonStyle" TargetType="Button">
@@ -50,86 +52,97 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <Button
+        <Label
             Grid.Row="0"
+            Grid.Column="0"
+            Content="Init library with path"
+            Style="{StaticResource LabelStyle}" />
+        <Label
+            Grid.Row="0"
+            Grid.Column="1"
+            Content="{Binding ClickOncePublishUrl}"
+            Style="{StaticResource LabelStyle}" />
+        <Button
+            Grid.Row="1"
             Grid.Column="0"
             Click="ButtonIsNetworkInstalled_OnClick"
             Content="IsNetworkInstalled"
             Style="{StaticResource ButtonStyle}" />
         <Label
             x:Name="LabelIsNetworkInstalled"
-            Grid.Row="0"
+            Grid.Row="1"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />
 
         <Button
-            Grid.Row="1"
+            Grid.Row="2"
             Grid.Column="0"
             Click="ButtonDataDir_OnClick"
             Content="DataDir"
             Style="{StaticResource ButtonStyle}" />
         <Label
             Name="LabelDataDir"
-            Grid.Row="1"
+            Grid.Row="2"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />
 
         <Button
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.Column="0"
             Click="ButtonLocalVersion_OnClick"
             Content="Get LocalVersion"
             Style="{StaticResource ButtonStyle}" />
         <Label
             Name="LabelLocalVersion"
-            Grid.Row="2"
+            Grid.Row="3"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />
 
         <Button
-            Grid.Row="3"
+            Grid.Row="4"
             Grid.Column="0"
             Click="ButtonGetServerVersion_OnClick"
             Content="Get ServerVersion"
             Style="{StaticResource ButtonStyle}" />
         <Label
             Name="LabelServerVersion"
-            Grid.Row="3"
+            Grid.Row="4"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />
 
         <Button
-            Grid.Row="4"
+            Grid.Row="5"
             Grid.Column="0"
             Click="ButtonUpdateAvailable_OnClick"
             Content="Update Available"
             Style="{StaticResource ButtonStyle}" />
         <Label
             Name="LabelUpdateAvailable"
-            Grid.Row="4"
+            Grid.Row="5"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />
 
         <Button
-            Grid.Row="5"
+            Grid.Row="6"
             Grid.Column="0"
             Click="ButtonUpdate_OnClick"
             Content="Update"
             Style="{StaticResource ButtonStyle}" />
         <Label
             Name="LabelUpdate"
-            Grid.Row="5"
+            Grid.Row="6"
             Grid.Column="1"
             Content=""
             Style="{StaticResource LabelStyle}" />

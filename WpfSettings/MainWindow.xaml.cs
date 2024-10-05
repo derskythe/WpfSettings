@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using NLog;
 using PureManApplicationDeployment;
+using PureManApplicationDeployment.Models;
 
 namespace WpfSettings;
 
@@ -22,17 +22,11 @@ public sealed partial class MainWindow
     // ReSharper restore FieldCanBeMadeReadOnly.Local
 
     private PureManClickOnce _ClickOnce;
+    public static string ClickOncePublishUrl => @"\\localhost\ClickOnce\WpfSettings";
 
     public MainWindow()
     {
         InitializeComponent();
-    }
-
-    private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
-    {
-        // TODO: Change it!!!
-        //_ClickOnce = new PureManClickOnce("http://test:8080/clickonce/");
-        _ClickOnce = new PureManClickOnce(@"\\localhost\ClickOnce\WpfSettings");
     }
 
     private void ButtonIsNetworkInstalled_OnClick(object sender, RoutedEventArgs e)
@@ -47,6 +41,11 @@ public sealed partial class MainWindow
         {
             Cursor = Cursors.Arrow;
         }
+    }
+
+    private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        _ClickOnce = new PureManClickOnce(ClickOncePublishUrl);
     }
 
     private async void ButtonLocalVersion_OnClick(object sender, RoutedEventArgs e)
@@ -74,7 +73,12 @@ public sealed partial class MainWindow
 
         try
         {
-            SetCorrectValue(LabelServerVersion, (await _ClickOnce.CachedServerVersion())?.ToString());
+            if (await _ClickOnce.CheckUpdateAvailableAsync())
+            {
+                // Logic
+            }
+
+            SetCorrectValue(LabelServerVersion, (await _ClickOnce.CachedServerVersionAsync())?.ToString());
         }
         catch (Exception exp)
         {
@@ -93,7 +97,7 @@ public sealed partial class MainWindow
 
         try
         {
-            SetCorrectValue(LabelUpdateAvailable, (await _ClickOnce.CachedIsUpdateAvailable()).ToString());
+            SetCorrectValue(LabelUpdateAvailable, (await _ClickOnce.CachedIsUpdateAvailableAsync()).ToString());
         }
         catch (Exception exp)
         {
@@ -119,9 +123,13 @@ public sealed partial class MainWindow
             var updateResult = await _ClickOnce.UpdateAsync();
             SetCorrectValue(LabelUpdate, updateResult.ToString());
 
-            if (updateResult)
+            if (updateResult == ClickOnceResult.Ok)
             {
                 Application.Current.Shutdown(0);
+            }
+            else
+            {
+                SetCorrectValue(LabelUpdate);
             }
         }
         catch (Exception exp)

@@ -11,9 +11,12 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
-using System;
 
-namespace PureManApplicationDeployment;
+
+using System;
+using PureManApplicationDeployment.Models;
+
+namespace PureManApplicationDeployment.Helpers;
 
 
 /// <summary>
@@ -23,11 +26,12 @@ namespace PureManApplicationDeployment;
 /// <seealso cref="System.Exception" />
 public sealed class ClickOnceDeploymentException : Exception
 {
+    public ClickOnceResult Code { get; init; }
     /// <summary>
     /// Initializes a new instance of the <see cref="ClickOnceDeploymentException"/> class.
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
-    public ClickOnceDeploymentException(string message) : base(message)
+    public ClickOnceDeploymentException(ClickOnceResult code, string message) : base(message)
     {
     }
 }

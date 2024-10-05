@@ -4,6 +4,12 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DefineConstants>TRACE;LOCAL_DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DefineConstants>TRACE;LOCAL_DEBUG</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <None Remove="NLog.config" />
     <None Update="NLog.xsd">
@@ -19,6 +25,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="NLog" version="5.3.4" />
@@ -28,9 +35,9 @@
     <Page Include="App.xaml" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PureManApplicationDevelopment\PureManApplicationDeployment.csproj" />
+    <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Properties\PublishProfiles\" />
+    <ProjectReference Include="..\PureManApplicationDevelopment\PureManApplicationDeployment.csproj" />
   </ItemGroup>
 </Project>
