@@ -1,9 +1,8 @@
-﻿namespace WpfSettings.Settings
+﻿namespace WpfSettings.Settings;
+
+public record ApplicationSettings
 {
-    public class ApplicationSettings
-    {
-        public int Id { get; set; }
-        public string ServerUrl { get; set; }
-        public bool Mode { get; set; }
-    }
+    public int Id { get; set; }
+    public string ServerUrl { get; set; }
+    public bool Mode { get; set; }
 }

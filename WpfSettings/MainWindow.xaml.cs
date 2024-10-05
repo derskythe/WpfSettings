@@ -1,97 +1,165 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using NLog;
 using PureManApplicationDeployment;
 
-namespace WpfSettings
+namespace WpfSettings;
+
+
+/// <summary>
+/// Interaction logic for MainWindow.xaml
+/// </summary>
+public sealed partial class MainWindow
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow
+    // ReSharper disable FieldCanBeMadeReadOnly.Local
+    // ReSharper disable InconsistentNaming
+    private static readonly Logger Log = LogManager.GetCurrentClassLogger();
+
+    // ReSharper restore InconsistentNaming
+    // ReSharper restore FieldCanBeMadeReadOnly.Local
+
+    private PureManClickOnce _ClickOnce;
+
+    public MainWindow()
     {
-        // ReSharper disable FieldCanBeMadeReadOnly.Local
-        // ReSharper disable InconsistentNaming
-        private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-        // ReSharper restore InconsistentNaming
-        // ReSharper restore FieldCanBeMadeReadOnly.Local
+        InitializeComponent();
+    }
 
-        private PureManClickOnce _ClickOnce;
+    private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // TODO: Change it!!!
+        //_ClickOnce = new PureManClickOnce("http://test:8080/clickonce/");
+        _ClickOnce = new PureManClickOnce(@"\\localhost\ClickOnce\WpfSettings");
+    }
 
-        public MainWindow()
+    private void ButtonIsNetworkInstalled_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
         {
-            InitializeComponent();
+            SetCorrectValue(LabelIsNetworkInstalled, _ClickOnce.IsNetworkDeployment.ToString());
         }
-
-        private void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+        finally
         {
-            _ClickOnce = new PureManClickOnce("http://test:8080/clickonce/");
+            Cursor = Cursors.Arrow;
         }
+    }
 
-        private void ButtonIsNetworkInstalled_OnClick(object sender, RoutedEventArgs e)
+    private async void ButtonLocalVersion_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
         {
-            LabelIsNetworkInstalled.Content = _ClickOnce.IsNetworkDeployment;
+            SetCorrectValue(LabelLocalVersion, (await _ClickOnce.CurrentVersion())?.ToString());
         }
-
-        private void ButtonLocalVersion_OnClick(object sender, RoutedEventArgs e)
+        catch (Exception exp)
         {
-            try
+            Log.Error(exp, exp.Message);
+            SetCorrectValue(LabelLocalVersion);
+        }
+        finally
+        {
+            Cursor = Cursors.Arrow;
+        }
+    }
+
+    private async void ButtonGetServerVersion_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
+        {
+            SetCorrectValue(LabelServerVersion, (await _ClickOnce.CachedServerVersion())?.ToString());
+        }
+        catch (Exception exp)
+        {
+            Log.Error(exp, exp.Message);
+            SetCorrectValue(LabelServerVersion);
+        }
+        finally
+        {
+            Cursor = Cursors.Arrow;
+        }
+    }
+
+    private async void ButtonUpdateAvailable_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
+        {
+            SetCorrectValue(LabelUpdateAvailable, (await _ClickOnce.CachedIsUpdateAvailable()).ToString());
+        }
+        catch (Exception exp)
+        {
+            Log.Error(exp, exp.Message);
+            SetCorrectValue(LabelUpdateAvailable);
+        }
+        finally
+        {
+            Cursor = Cursors.Arrow;
+        }
+    }
+
+    private async void ButtonUpdate_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
+        {
+            // On update don't make application restart!
+            // THIS IS IMPORTANT!
+            //
+            // Just make shutdown of current app
+            var updateResult = await _ClickOnce.UpdateAsync();
+            SetCorrectValue(LabelUpdate, updateResult.ToString());
+
+            if (updateResult)
             {
-                LabelLocalVersion.Content = _ClickOnce.CurrentVersion;
-            }
-            catch (Exception exp)
-            {
-                Log.Error(exp, exp.Message);
+                Application.Current.Shutdown(0);
             }
         }
-
-        private void ButtonGetServerVersion_OnClick(object sender, RoutedEventArgs e)
+        catch (Exception exp)
         {
-            try
-            {
-                LabelServerVersion.Content = _ClickOnce.CachedServerVersion;
-            }
-            catch (Exception exp)
-            {
-                Log.Error(exp, exp.Message);
-            }
+            Log.Error(exp, exp.Message);
+            SetCorrectValue(LabelUpdate);
         }
-
-        private void ButtonUpdateAvailable_OnClick(object sender, RoutedEventArgs e)
+        finally
         {
-            try
-            {
-                LabelUpdateAvailable.Content = _ClickOnce.CachedIsUpdateAvailable;
-            }
-            catch (Exception exp)
-            {
-                Log.Error(exp, exp.Message);
-            }
+            Cursor = Cursors.Arrow;
         }
+    }
 
-        private async void ButtonUpdate_OnClick(object sender, RoutedEventArgs e)
+    private void ButtonDataDir_OnClick(object sender, RoutedEventArgs e)
+    {
+        Cursor = Cursors.Wait;
+
+        try
         {
-            try
-            {
-                // On update don't make application restart! This is important!
-                // Just make shutdown of current app
-                var updateResult = await _ClickOnce.UpdateAsync();
-                LabelUpdate.Content = updateResult;
-                if (updateResult)
-                {
-                    Application.Current.Shutdown(0);
-                }
-            }
-            catch (Exception exp)
-            {
-                Log.Error(exp, exp.Message);
-            }
+            SetCorrectValue(LabelDataDir, _ClickOnce.DataDir);
         }
-
-        private void ButtonDataDir_OnClick(object sender, RoutedEventArgs e)
+        finally
         {
-            LabelDataDir.Content = _ClickOnce.DataDir;
+            Cursor = Cursors.Arrow;
+        }
+    }
+
+    private void SetCorrectValue(ContentControl label, string value = "")
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            label.Content = "<NO DATA>";
+            label.Foreground = System.Windows.Media.Brushes.Brown;
+        }
+        else
+        {
+            label.Content = value;
+            label.Foreground = System.Windows.Media.Brushes.Black;
         }
     }
 }

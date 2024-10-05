@@ -11,24 +11,24 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
-namespace PureManApplicationDeployment
+namespace PureManApplicationDeployment;
+
+
+/// <summary>
+/// Enum InstallFrom
+/// </summary>
+internal enum InstallFrom
 {
     /// <summary>
-    /// Enum InstallFrom
+    /// The no network
     /// </summary>
-    internal enum InstallFrom
-    {
-        /// <summary>
-        /// The no network
-        /// </summary>
-        NoNetwork,
-        /// <summary>
-        /// The unc
-        /// </summary>
-        Unc,
-        /// <summary>
-        /// The HTTP
-        /// </summary>
-        Web
-    }
+    NoNetwork,
+    /// <summary>
+    /// The unc
+    /// </summary>
+    Unc,
+    /// <summary>
+    /// The HTTP
+    /// </summary>
+    Web
 }

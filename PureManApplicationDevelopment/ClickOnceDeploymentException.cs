@@ -13,21 +13,21 @@
 // ***********************************************************************
 using System;
 
-namespace PureManApplicationDeployment
+namespace PureManApplicationDeployment;
+
+
+/// <summary>
+/// Class ClickOnceDeploymentException.
+/// Implements the <see cref="System.Exception" />
+/// </summary>
+/// <seealso cref="System.Exception" />
+public sealed class ClickOnceDeploymentException : Exception
 {
     /// <summary>
-    /// Class ClickOnceDeploymentException.
-    /// Implements the <see cref="System.Exception" />
+    /// Initializes a new instance of the <see cref="ClickOnceDeploymentException"/> class.
     /// </summary>
-    /// <seealso cref="System.Exception" />
-    public class ClickOnceDeploymentException : Exception
+    /// <param name="message">The message that describes the error.</param>
+    public ClickOnceDeploymentException(string message) : base(message)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ClickOnceDeploymentException"/> class.
-        /// </summary>
-        /// <param name="message">The message that describes the error.</param>
-        public ClickOnceDeploymentException(string message) : base(message)
-        {
-        }
     }
 }

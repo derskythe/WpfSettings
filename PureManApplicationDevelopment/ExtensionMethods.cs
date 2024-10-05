@@ -11,50 +11,43 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
-using System;
+
+
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
-using Syroot.Windows.IO;
-using System.Runtime.CompilerServices;
 
-namespace PureManApplicationDeployment
+namespace PureManApplicationDeployment;
+
+
+internal static class Extensions
 {
-    internal static class Extensions
+    public static Task WaitForExitAsync(this Process proc, CancellationToken cancellationToken)
     {
-        /// <inheritdoc cref="CancellationToken.IsCancellationRequested"/>
-        [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-        [DebuggerHidden]
-        public static bool IsCancellationRequested(this CancellationToken? token) => token.HasValue && token.Value.IsCancellationRequested;
+        var tcs = new TaskCompletionSource<object>();
 
-
-        /// <inheritdoc cref="CancellationToken.ThrowIfCancellationRequested"/>
-        [MethodImpl(methodImplOptions: MethodImplOptions.AggressiveInlining)]
-        [DebuggerHidden]
-        public static void ThrowIfCancellationRequested(this CancellationToken? token)
+        proc.Exited += (_, __) =>
         {
-            token?.ThrowIfCancellationRequested();
+            proc.WaitForExit(); //ensure process has exited!
+            tcs.TrySetResult(true);
+        };
+
+        if (proc?.HasExited ?? true)
+        {
+            return Task.CompletedTask;
         }
 
-#if NETCOREAPP3_1_OR_GREATER
-        //This does not exist in NoreCoreApp but it does in Net5
-        public static Task WaitForExitAsync(this Process proc, CancellationToken token)
-        {
-            var tcs = new TaskCompletionSource<object>();
-            proc.Exited += (_, __) =>
-            {
-                proc.WaitForExit(); //ensure process has exited!
-                tcs.TrySetResult(true);
-            };
-            if (proc?.HasExited ?? true) return Task.CompletedTask;
-            return Task.Run(() => Task.WaitAll(new Task[] { tcs.Task }, token), token);
-        }
-#endif
-
+        return Task.Run
+            (
+             () => Task.WaitAll
+                 (
+                  new Task[]
+                  {
+                      tcs.Task,
+                  },
+                  cancellationToken
+                 ),
+             cancellationToken
+            );
     }
 }
